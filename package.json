@@ -2,9 +2,10 @@
   "name": "eaglerproxy",
   "version": "1.0.0",
   "description": "A flexible, easy expandable EaglercraftX 1.8.9 proxy written in TypeScript.",
-  "main": "launcher.js",
+  "main": "build/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "start": "node build/index.js"
   },
   "author": "WorldEditAxe, q13x",
   "license": "MIT",
