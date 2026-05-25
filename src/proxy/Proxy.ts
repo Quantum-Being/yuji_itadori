@@ -195,6 +195,8 @@ export class Proxy extends EventEmitter {
   private async _handleWSConnection(ws: WebSocket) {
     const firstPacket = await Util.awaitPacket(ws);
     let player: Player, handled: boolean;
+    let placeholderKey: string | null = null;
+    let handshakeCompleted = false;
     setTimeout(() => {
       if (!handled) {
         this.initalHandlerLogger.warn(
@@ -288,7 +290,8 @@ export class Proxy extends EventEmitter {
           );
           return;
         }
-        this.players.set(`!phs.${player.uuid}`, player);
+        placeholderKey = `!phs.${player.uuid}`;
+        this.players.set(placeholderKey, player);
         this._logger.info(
           `Player ${loginPacket.username} (${Util.generateUUIDFromPlayer(
             loginPacket.username
@@ -326,11 +329,12 @@ export class Proxy extends EventEmitter {
         player.skin = obj;
 
         player.write(new SCReadyPacket());
-        this.players.delete(`!phs.${player.uuid}`);
+        this.players.delete(placeholderKey);
         this.players.set(player.username, player);
         player.initListeners();
         this._bindListenersToPlayer(player);
         player.state = Enums.ClientState.POST_HANDSHAKE;
+        handshakeCompleted = true;
         this._logger.info(
           `Handshake Success! Connecting player ${player.username} to server...`
         );
@@ -355,6 +359,14 @@ export class Proxy extends EventEmitter {
         this.players.delete(`!phs.${player.uuid}`);
       if (player && player.uuid && this.players.has(player.username))
         this.players.delete(player.username);
+    } finally {
+      if (
+        !handshakeCompleted &&
+        placeholderKey != null &&
+        this.players.get(placeholderKey) === player
+      ) {
+        this.players.delete(placeholderKey);
+      }
     }
   }
 
