@@ -27,8 +27,8 @@ export const config: Config = {
       originBlacklist: null,
     },
     server: {
-      host: "no",
-      port: 46625,
+      host: "yuji_itadori.aternos.me",
+      port: 30119,
     },
     tls: undefined,
   },
