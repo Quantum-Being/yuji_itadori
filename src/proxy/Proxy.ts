@@ -290,6 +290,7 @@ export class Proxy extends EventEmitter {
           );
           return;
         }
+        const originalUsername = player.username;
         placeholderKey = `!phs.${player.uuid}`;
         this.players.set(placeholderKey, player);
         this._logger.info(
@@ -299,16 +300,56 @@ export class Proxy extends EventEmitter {
             loginPacket.networkVersion
           }, game ver: ${loginPacket.gameVersion}) is attempting to connect!`
         );
+
         player.write(new SCIdentifyPacket());
         const usernamePacket: CSUsernamePacket = (await player.read(
           Enums.PacketId.CSUsernamePacket
         )) as any;
-        if (usernamePacket.username !== player.username) {
+
+        // validate the username client sent (best-effort)
+        try {
+          Util.validateUsername(usernamePacket.username);
+        } catch (err) {
+          player.disconnect(`${Enums.ChatColor.RED}${err.reason || err}`);
+          return;
+        }
+
+        // Decide a final username to use for this player. If the original
+        // username is already taken, try appending a single digit 1-9 to
+        // find an available display name. If none available, reject.
+        let finalUsername = originalUsername;
+        if (
+          this.players.get(originalUsername) != null ||
+          this.players.get(`!phs.${Util.generateUUIDFromPlayer(originalUsername)}`) != null
+        ) {
+          for (let i = 1; i <= 9; i++) {
+            const attempt = `${originalUsername}${i}`;
+            const attemptUuid = Util.generateUUIDFromPlayer(attempt);
+            if (
+              this.players.get(attempt) == null &&
+              this.players.get(`!phs.${attemptUuid}`) == null
+            ) {
+              finalUsername = attempt;
+              break;
+            }
+          }
+        }
+
+        if (
+          finalUsername === originalUsername &&
+          (this.players.get(originalUsername) != null ||
+            this.players.get(`!phs.${Util.generateUUIDFromPlayer(originalUsername)}`) != null)
+        ) {
           player.disconnect(
-            `${Enums.ChatColor.YELLOW}Failed to complete handshake. Your game version may be too old or too new.`
+            `${Enums.ChatColor.YELLOW}Someone under your username (${originalUsername}) is already connected to the proxy!`
           );
           return;
         }
+
+        // apply final username and uuid
+        player.username = finalUsername;
+        player.uuid = Util.generateUUIDFromPlayer(player.username);
+
         const syncUuid = new SCSyncUuidPacket();
         syncUuid.username = player.username;
         syncUuid.uuid = player.uuid;
