@@ -5,7 +5,7 @@
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node scripts/cleanupPorts.js && node build/index.js"
+    "start": "node scripts/startProxy.js"
   },
   "author": "WorldEditAxe, q13x",
   "license": "MIT",

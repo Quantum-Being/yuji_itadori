@@ -37,7 +37,7 @@ hushConsole();
 const logger = new Logger("EaglerProxyAAS");
 logger.info(`Starting ${metadata.name} v${metadata.version}...`);
 logger.info(
-  `(internal server port: ${config.bindInternalServerPort}, internal server IP: ${config.bindInternalServerPort})`
+  `(internal server port: ${config.bindInternalServerPort}, internal server IP: ${config.bindInternalServerIp})`
 );
 
 logger.info("Starting internal server...");
