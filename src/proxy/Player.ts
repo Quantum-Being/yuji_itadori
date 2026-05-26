@@ -144,7 +144,10 @@ export class Player extends EventEmitter {
   }
 
   public write(packet: Packet) {
-    this.ws.send(packet.serialize());
+    const serialized = packet.serialize();
+    const packetName = packet.constructor.name;
+    console.log(`[PACKET_OUT] ${packetName}: ${serialized.toString('hex')} (${serialized.length} bytes)`);
+    this.ws.send(serialized);
   }
 
   public async read(
