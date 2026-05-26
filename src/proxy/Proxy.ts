@@ -200,7 +200,6 @@ export class Proxy extends EventEmitter {
       }`);
     } catch (e) {}
     let player: Player, handled: boolean;
-    let placeholderKey: string | null = null;
     let handshakeCompleted = false;
     setTimeout(() => {
       if (!handled) {
@@ -286,18 +285,7 @@ export class Proxy extends EventEmitter {
             `${Enums.ChatColor.YELLOW}Proxy is full! Please try again later.`
           );
           return;
-        } else if (
-          this.players.get(player.username) != null ||
-          this.players.get(`!phs.${player.uuid}`) != null
-        ) {
-          player.disconnect(
-            `${Enums.ChatColor.YELLOW}Someone under your username (${player.username}) is already connected to the proxy!`
-          );
-          return;
         }
-        const originalUsername = player.username;
-        placeholderKey = `!phs.${player.uuid}`;
-        this.players.set(placeholderKey, player);
         this._logger.info(
           `Player ${loginPacket.username} (${Util.generateUUIDFromPlayer(
             loginPacket.username
@@ -321,6 +309,13 @@ export class Proxy extends EventEmitter {
 
         this.initalHandlerLogger.debug(`Received CSUsernamePacket username=${usernamePacket.username}`);
 
+        if (usernamePacket.username !== player.username) {
+          player.disconnect(
+            `${Enums.ChatColor.YELLOW}Failed to complete handshake. Your game version may be too old or too new.`
+          );
+          return;
+        }
+
         // validate the username client sent (best-effort)
         try {
           Util.validateUsername(usernamePacket.username);
@@ -328,42 +323,6 @@ export class Proxy extends EventEmitter {
           player.disconnect(`${Enums.ChatColor.RED}${err.reason || err}`);
           return;
         }
-
-        // Decide a final username to use for this player. If the original
-        // username is already taken, try appending a single digit 1-9 to
-        // find an available display name. If none available, reject.
-        let finalUsername = originalUsername;
-        if (
-          this.players.get(originalUsername) != null ||
-          this.players.get(`!phs.${Util.generateUUIDFromPlayer(originalUsername)}`) != null
-        ) {
-          for (let i = 1; i <= 9; i++) {
-            const attempt = `${originalUsername}${i}`;
-            const attemptUuid = Util.generateUUIDFromPlayer(attempt);
-            if (
-              this.players.get(attempt) == null &&
-              this.players.get(`!phs.${attemptUuid}`) == null
-            ) {
-              finalUsername = attempt;
-              break;
-            }
-          }
-        }
-
-        if (
-          finalUsername === originalUsername &&
-          (this.players.get(originalUsername) != null ||
-            this.players.get(`!phs.${Util.generateUUIDFromPlayer(originalUsername)}`) != null)
-        ) {
-          player.disconnect(
-            `${Enums.ChatColor.YELLOW}Someone under your username (${originalUsername}) is already connected to the proxy!`
-          );
-          return;
-        }
-
-        // apply final username and uuid
-        player.username = finalUsername;
-        player.uuid = Util.generateUUIDFromPlayer(player.username);
 
         const syncUuid = new SCSyncUuidPacket();
         syncUuid.username = player.username;
@@ -389,7 +348,6 @@ export class Proxy extends EventEmitter {
         player.skin = obj;
 
         player.write(new SCReadyPacket());
-        this.players.delete(placeholderKey);
         this.players.set(player.username, player);
         player.initListeners();
         this._bindListenersToPlayer(player);
@@ -415,17 +373,11 @@ export class Proxy extends EventEmitter {
       );
       handled = true;
       ws.close();
-      if (player && player.uuid && this.players.has(`!phs.${player.uuid}`))
-        this.players.delete(`!phs.${player.uuid}`);
       if (player && player.uuid && this.players.has(player.username))
         this.players.delete(player.username);
     } finally {
-      if (
-        !handshakeCompleted &&
-        placeholderKey != null &&
-        this.players.get(placeholderKey) === player
-      ) {
-        this.players.delete(placeholderKey);
+      if (!handshakeCompleted && player && player.uuid && this.players.get(player.username) === player) {
+        this.players.delete(player.username);
       }
     }
   }
