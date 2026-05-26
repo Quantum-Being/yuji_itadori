@@ -10,8 +10,8 @@ export const config: Config = {
   },
   adapter: {
     name: "EaglerProxy",
-    bindHost: "0.0.0.0",
-    bindPort: 8080,
+    bindHost: process.env.EAGLER_PROXY_HOST || "0.0.0.0",
+    bindPort: Number(process.env.EAGLER_PROXY_PORT || process.env.PORT || 8080),
     maxConcurrentClients: 20,
     skinUrlWhitelist: undefined,
     motd: true

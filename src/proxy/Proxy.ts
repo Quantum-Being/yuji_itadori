@@ -194,6 +194,11 @@ export class Proxy extends EventEmitter {
 
   private async _handleWSConnection(ws: WebSocket) {
     const firstPacket = await Util.awaitPacket(ws);
+    try {
+      this.initalHandlerLogger.debug(`First packet (hex): ${
+        firstPacket instanceof Buffer ? firstPacket.toString("hex") : String(firstPacket)
+      }`);
+    } catch (e) {}
     let player: Player, handled: boolean;
     let placeholderKey: string | null = null;
     let handshakeCompleted = false;
@@ -301,10 +306,20 @@ export class Proxy extends EventEmitter {
           }, game ver: ${loginPacket.gameVersion}) is attempting to connect!`
         );
 
-        player.write(new SCIdentifyPacket());
+        // send identify packet and log its bytes
+        const identifyPacket = new SCIdentifyPacket();
+        try {
+          this.initalHandlerLogger.debug(
+            `Sending SCIdentifyPacket (hex): ${identifyPacket.serialize().toString("hex")}`
+          );
+        } catch (e) {}
+        player.write(identifyPacket);
+
         const usernamePacket: CSUsernamePacket = (await player.read(
           Enums.PacketId.CSUsernamePacket
         )) as any;
+
+        this.initalHandlerLogger.debug(`Received CSUsernamePacket username=${usernamePacket.username}`);
 
         // validate the username client sent (best-effort)
         try {
@@ -353,8 +368,12 @@ export class Proxy extends EventEmitter {
         const syncUuid = new SCSyncUuidPacket();
         syncUuid.username = player.username;
         syncUuid.uuid = player.uuid;
+        try {
+          this.initalHandlerLogger.debug(`Sending SCSyncUuidPacket (hex): ${syncUuid.serialize().toString("hex")}`);
+        } catch (e) {}
         player.write(syncUuid);
 
+        this.initalHandlerLogger.debug(`Waiting for CSReadyPacket and CSSetSkinPacket from client (${player.username})`);
         const prom = await Promise.all([
             player.read(Enums.PacketId.CSReadyPacket),
             (await player.read(
