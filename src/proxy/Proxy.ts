@@ -373,11 +373,17 @@ export class Proxy extends EventEmitter {
       );
       handled = true;
       ws.close();
+      if (player && player.uuid && this.players.has(`!phs.${player.uuid}`))
+        this.players.delete(`!phs.${player.uuid}`);
       if (player && player.uuid && this.players.has(player.username))
         this.players.delete(player.username);
     } finally {
-      if (!handshakeCompleted && player && player.uuid && this.players.get(player.username) === player) {
-        this.players.delete(player.username);
+      if (
+        !handshakeCompleted &&
+        placeholderKey != null &&
+        this.players.get(placeholderKey) === player
+      ) {
+        this.players.delete(placeholderKey);
       }
     }
   }
